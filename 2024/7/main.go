@@ -105,7 +105,7 @@ func secondPart() {
 }
 
 func applyOperators(possibleResults []int, nextValue int, checkValue int) []int {
-	results := make([]int, 1)
+	var results []int
 	for _, operator := range operators {
 		for _, pr := range possibleResults {
 			nextResult := operator(pr, nextValue)
