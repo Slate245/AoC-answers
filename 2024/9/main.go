@@ -32,8 +32,54 @@ func (dl *diskLayout) moveBlock(from int, to int) error {
 
 	return nil
 }
+func (dl *diskLayout) getContigousFreeSpaceLengthAt(idx int, dir int) int {
+	i := idx
+	for {
+		if i == len(*dl) || i < 0 {
+			break
+		}
+		if (*dl)[i].fileId != -1 {
+			break
+		}
+		if dir < 0 {
+			i--
+		} else {
+			i++
+		}
+	}
+	if dir < 0 {
+		return idx - i
+	}
+	return i - idx
+}
 
-func (dl *diskLayout) compact() error {
+func (dl *diskLayout) getContigousFileLengthAt(idx int, dir int) int {
+	i := idx
+	fileId := -1
+	for {
+		if i == len(*dl) || i < 0 {
+			break
+		}
+		if (*dl)[i].fileId == -1 {
+			break
+		}
+		if fileId != -1 && (*dl)[i].fileId != fileId {
+			break
+		}
+		fileId = (*dl)[i].fileId
+		if dir < 0 {
+			i--
+		} else {
+			i++
+		}
+	}
+	if dir < 0 {
+		return idx - i
+	}
+	return i - idx
+}
+
+func (dl *diskLayout) compactFragmenting() error {
 	fw := 0
 	bw := len(*dl) - 1
 	for fw != bw {
@@ -51,6 +97,43 @@ func (dl *diskLayout) compact() error {
 		}
 		bw--
 		fw++
+	}
+	return nil
+}
+
+func (dl *diskLayout) compactPreserving() error {
+	fw := 0
+	bw := len(*dl) - 1
+	for bw > -1 && fw < len(*dl) {
+		if fw == bw {
+			bw -= (*dl).getContigousFileLengthAt(bw, -1)
+			fw = 0
+			continue
+		}
+		if (*dl)[bw].fileId == -1 {
+			bw--
+			continue
+		}
+		if (*dl)[fw].fileId != -1 {
+			fw++
+			continue
+		}
+
+		freeLength := (*dl).getContigousFreeSpaceLengthAt(fw, 1)
+		fileLength := (*dl).getContigousFileLengthAt(bw, -1)
+		if freeLength < fileLength {
+			fw += freeLength
+			continue
+		}
+		for i := 0; i < fileLength; i++ {
+			err := (*dl).moveBlock(bw-i, fw+i)
+			if err != nil {
+				return err
+			}
+		}
+		bw -= fileLength
+		fw = 0
+
 	}
 	return nil
 }
@@ -87,7 +170,7 @@ func firstPart() {
 	slog.Debug("Running first part")
 
 	layout := prepareInput(input)
-	err := layout.compact()
+	err := layout.compactFragmenting()
 	if err != nil {
 		panic(err)
 	}
@@ -97,6 +180,14 @@ func firstPart() {
 
 func secondPart() {
 	slog.Debug("Running second part")
+
+	layout := prepareInput(input)
+	err := layout.compactPreserving()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(layout.checksum())
 }
 
 func prepareInput(input string) diskLayout {
