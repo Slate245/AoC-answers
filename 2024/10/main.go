@@ -20,9 +20,8 @@ type Position struct {
 }
 
 func (p *Position) GetScore() int {
-	score := 0
 	if p.height != 0 {
-		return score
+		return 0
 	}
 	positionsToCheck := make(map[string]*Position)
 	positionsToCheck[p.StrCoords()] = p
@@ -46,6 +45,50 @@ func (p *Position) GetScore() int {
 		positionsToCheck = nextPositions
 	}
 	return len(positionsToCheck)
+}
+
+func (p *Position) GetRating() int {
+	if p.height != 0 {
+		return 0
+	}
+
+	paths := [][]*Position{{p}}
+
+	for i := 1; i < 10; i++ {
+		var nextPaths [][]*Position
+		for _, p := range paths {
+			if len(p) == 0 {
+				continue
+			}
+			pos := p[len(p)-1]
+			if pos.top != nil && pos.top.height == i {
+				var newPath []*Position
+				copy(newPath, p)
+				newPath = append(newPath, pos.top)
+				nextPaths = append(nextPaths, newPath)
+			}
+			if pos.right != nil && pos.right.height == i {
+				var newPath []*Position
+				copy(newPath, p)
+				newPath = append(newPath, pos.right)
+				nextPaths = append(nextPaths, newPath)
+			}
+			if pos.bottom != nil && pos.bottom.height == i {
+				var newPath []*Position
+				copy(newPath, p)
+				newPath = append(newPath, pos.bottom)
+				nextPaths = append(nextPaths, newPath)
+			}
+			if pos.left != nil && pos.left.height == i {
+				var newPath []*Position
+				copy(newPath, p)
+				newPath = append(newPath, pos.left)
+				nextPaths = append(nextPaths, newPath)
+			}
+		}
+		paths = nextPaths
+	}
+	return len(paths)
 }
 
 func (p *Position) StrCoords() string {
@@ -210,6 +253,22 @@ func firstPart() {
 
 func secondPart() {
 	slog.Debug("Running second part")
+
+	tmap := prepareInput(input)
+	totalRating := 0
+
+	for y := tmap.bounds[1][0]; y < tmap.bounds[1][1]+1; y++ {
+		for x := tmap.bounds[0][0]; x < tmap.bounds[0][1]+1; x++ {
+			p := tmap.get(x, y)
+
+			if p == nil {
+				continue
+			}
+			totalRating += p.GetRating()
+		}
+	}
+
+	fmt.Println(totalRating)
 }
 
 func prepareInput(input string) TopographicMap {
