@@ -39,9 +39,6 @@ func (mr *MachineRules) GetLowestTokenAmountForWin() int {
 	}
 	aButtonPresses := (mr.prizeLocation.x - bButtonPresses*mr.bButtonRules.x) / mr.aButtonRules.x
 
-	if aButtonPresses > 100 || bButtonPresses > 100 {
-		return 0
-	}
 	const aButtonCost = 3
 	const bButtonCost = 1
 	return aButtonPresses*aButtonCost + bButtonPresses*bButtonCost
@@ -87,6 +84,46 @@ func newMachineRules(s string) *MachineRules {
 	return &mr
 }
 
+func newMachineRules2(s string) *MachineRules {
+	mr := MachineRules{}
+
+	matches := machineRulesRegexp.FindStringSubmatch(s)[1:]
+
+	for i := range 2 {
+		numStrs := buttonRegexp.FindAllString(matches[i], -1)
+		var nums []int
+		for _, numStr := range numStrs {
+			num, err := strconv.Atoi(numStr)
+			if err != nil {
+				panic(fmt.Sprintf("can't convert %v to int", numStr))
+			}
+			nums = append(nums, num)
+		}
+
+		if i == 0 {
+			mr.aButtonRules.x = nums[0]
+			mr.aButtonRules.y = nums[1]
+		} else {
+			mr.bButtonRules.x = nums[0]
+			mr.bButtonRules.y = nums[1]
+		}
+	}
+
+	numStrs := prizeRegexp.FindAllString(matches[2], -1)
+	var nums []int
+	for _, numStr := range numStrs {
+		num, err := strconv.Atoi(numStr)
+		if err != nil {
+			panic(fmt.Sprintf("can't convert %v to int", numStr))
+		}
+		nums = append(nums, num)
+	}
+	mr.prizeLocation.x = nums[0] + 10000000000000
+	mr.prizeLocation.y = nums[1] + 10000000000000
+
+	return &mr
+}
+
 //go:embed input.txt
 var input string
 
@@ -125,6 +162,21 @@ func firstPart() {
 
 func secondPart() {
 	slog.Debug("Running second part")
+	var machines []*MachineRules
+
+	preparedInput := preparedInput(input)
+	for _, lines := range preparedInput {
+		mr := newMachineRules2(lines)
+		machines = append(machines, mr)
+	}
+
+	tokenAmount := 0
+
+	for _, mr := range machines {
+		tokenAmount += mr.GetLowestTokenAmountForWin()
+	}
+
+	fmt.Println(tokenAmount)
 }
 
 func preparedInput(input string) []string {
